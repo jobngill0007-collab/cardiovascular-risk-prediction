@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.env
+
+# ML model (large binary — regenerate with train_model.py)
+heart_model.pkl
+
+# Dataset files (large — not committed)
+*.XPT
+*.xpt
+*.csv
+LLCP2022*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
