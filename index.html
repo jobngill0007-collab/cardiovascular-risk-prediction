@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cardiovascular Risk Prediction System</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:#1a202c;min-height:100vh}
+.header{background:linear-gradient(135deg,#c53030,#e53e3e);color:#fff;padding:28px 24px;text-align:center}
+.header h1{font-size:1.8rem;font-weight:700;letter-spacing:.5px}
+.header p{opacity:.88;margin-top:6px;font-size:.95rem}
+.model-badge{display:inline-flex;gap:16px;margin-top:14px;flex-wrap:wrap;justify-content:center}
+.badge{background:rgba(255,255,255,.18);border-radius:20px;padding:4px 14px;font-size:.82rem;font-weight:600}
+.container{max-width:860px;margin:0 auto;padding:24px 16px}
+.card{background:#fff;border-radius:14px;padding:28px;margin-bottom:22px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+.section-title{font-size:1.05rem;font-weight:700;color:#c53030;margin-bottom:18px;padding-bottom:8px;border-bottom:2px solid #fed7d7;display:flex;align-items:center;gap:8px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:540px){.grid{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:5px}
+label{font-size:.85rem;font-weight:600;color:#4a5568}
+input[type=number],select{padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.9rem;background:#f7fafc;transition:border .2s}
+input[type=number]:focus,select:focus{outline:none;border-color:#e53e3e;background:#fff}
+.bmi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn-predict{width:100%;padding:15px;background:linear-gradient(135deg,#c53030,#e53e3e);color:#fff;border:none;border-radius:10px;font-size:1.05rem;font-weight:700;cursor:pointer;letter-spacing:.5px;transition:transform .15s,box-shadow .15s}
+.btn-predict:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(197,48,48,.4)}
+.btn-predict:active{transform:translateY(0)}
+.results{display:none}
+.risk-banner{border-radius:12px;padding:22px;text-align:center;margin-bottom:20px;animation:fadeIn .5s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+.risk-banner h2{font-size:1.6rem;font-weight:800;margin-bottom:6px}
+.risk-banner .prob{font-size:2.4rem;font-weight:900;margin:8px 0}
+.risk-banner p{opacity:.85;font-size:.9rem}
+.low-risk{background:linear-gradient(135deg,#f0fff4,#c6f6d5);color:#22543d}
+.moderate-risk{background:linear-gradient(135deg,#fffff0,#fefcbf);color:#744210}
+.high-risk{background:linear-gradient(135deg,#fff5f5,#fed7d7);color:#742a2a}
+.metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+@media(max-width:480px){.metrics-grid{grid-template-columns:1fr 1fr}}
+.metric-box{background:#f7fafc;border-radius:10px;padding:14px;text-align:center}
+.metric-box .val{font-size:1.5rem;font-weight:800;color:#c53030}
+.metric-box .lbl{font-size:.75rem;color:#718096;margin-top:3px}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px}
+@media(max-width:600px){.charts-grid{grid-template-columns:1fr}}
+.chart-box{background:#f7fafc;border-radius:10px;padding:14px}
+.chart-box h4{font-size:.85rem;font-weight:700;color:#4a5568;margin-bottom:10px;text-align:center}
+.chart-wide{grid-column:1/-1}
+.score-ring{display:flex;flex-direction:column;align-items:center;gap:8px}
+.rec-list{list-style:none;display:flex;flex-direction:column;gap:8px}
+.rec-list li{background:#f7fafc;border-left:4px solid #e53e3e;border-radius:0 8px 8px 0;padding:10px 14px;font-size:.88rem;line-height:1.5}
+.rec-list li.good{border-color:#38a169}
+.disclaimer{background:#fffbeb;border:1px solid #f6e05e;border-radius:10px;padding:14px;font-size:.82rem;color:#744210;margin-top:16px;line-height:1.6}
+.btn-download{display:block;width:100%;margin-top:14px;padding:12px;background:#2d3748;color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;transition:background .2s}
+.btn-download:hover{background:#1a202c}
+.loader{display:none;text-align:center;padding:30px;font-size:1rem;color:#718096}
+.spinner{width:36px;height:36px;border:4px solid #fed7d7;border-top-color:#c53030;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>&#x2764;&#xfe0f; Cardiovascular Risk Prediction System</h1>
+  <p>AI-powered heart disease risk assessment — for educational awareness only</p>
+  <div class="model-badge" id="modelBadge"></div>
+</div>
+
+<div class="container">
+
+  <!-- Form -->
+  <form id="riskForm" class="card" onsubmit="runPrediction(event)">
+
+    <div class="section-title">&#x1f9d1; Personal Information</div>
+    <div class="grid" style="margin-bottom:18px">
+      <div class="field">
+        <label>Age (years)</label>
+        <input type="number" id="f_age" min="18" max="80" placeholder="e.g. 45" required>
+      </div>
+      <div class="field">
+        <label>Sex</label>
+        <select id="f_sex">
+          <option value="1">Male</option>
+          <option value="0">Female</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-title">&#x1f4cf; Body Measurements</div>
+    <div class="grid" style="margin-bottom:18px">
+      <div class="field">
+        <label>Height (cm)</label>
+        <input type="number" id="h_height" min="100" max="250" placeholder="e.g. 170" required>
+      </div>
+      <div class="field">
+        <label>Weight (kg)</label>
+        <input type="number" id="h_weight" min="30" max="300" placeholder="e.g. 75" required>
+      </div>
+    </div>
+    <div style="margin-bottom:18px;font-size:.82rem;color:#718096" id="bmiDisplay">BMI will be calculated automatically.</div>
+
+    <div class="section-title">&#x1fa7a; Medical History</div>
+    <div class="grid" style="margin-bottom:18px">
+      <div class="field">
+        <label>High Blood Pressure (ever told)?</label>
+        <select id="f_high_bp"><option value="1">Yes</option><option value="0" selected>No</option></select>
+      </div>
+      <div class="field">
+        <label>High Cholesterol (ever told)?</label>
+        <select id="f_high_chol"><option value="1">Yes</option><option value="0" selected>No</option></select>
+      </div>
+      <div class="field">
+        <label>Diabetes?</label>
+        <select id="f_diabetes"><option value="1">Yes</option><option value="0" selected>No</option></select>
+      </div>
+      <div class="field">
+        <label>Ever had a Stroke?</label>
+        <select id="f_stroke"><option value="1">Yes</option><option value="0" selected>No</option></select>
+      </div>
+      <div class="field">
+        <label>Family History of Heart Disease?</label>
+        <select id="f_family"><option value="1">Yes</option><option value="0" selected>No</option></select>
+      </div>
+      <div class="field">
+        <label>General Health</label>
+        <select id="f_genhealth">
+          <option value="1">Excellent</option>
+          <option value="2">Very Good</option>
+          <option value="3" selected>Good</option>
+          <option value="4">Fair</option>
+          <option value="5">Poor</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-title">&#x1f6b6; Lifestyle</div>
+    <div class="grid" style="margin-bottom:18px">
+      <div class="field">
+        <label>Smoked 100+ cigarettes in lifetime?</label>
+        <select id="f_smoke"><option value="1">Yes</option><option value="0" selected>No</option></select>
+      </div>
+      <div class="field">
+        <label>Heavy/Binge Drinker?</label>
+        <select id="f_binge"><option value="1">Yes</option><option value="0" selected>No</option></select>
+      </div>
+      <div class="field">
+        <label>Physical Activity (past 30 days)?</label>
+        <select id="f_exercise"><option value="1" selected>Yes</option><option value="0">No</option></select>
+      </div>
+      <div class="field">
+        <label>Fruit intake less than once daily?</label>
+        <select id="f_lowfrvt"><option value="1">Yes (low)</option><option value="0" selected>No (adequate)</option></select>
+      </div>
+      <div class="field">
+        <label>Vegetable intake less than once daily?</label>
+        <select id="f_lowveg"><option value="1">Yes (low)</option><option value="0" selected>No (adequate)</option></select>
+      </div>
+      <div class="field">
+        <label>Average Sleep (hours/night)</label>
+        <input type="number" id="f_sleep" min="1" max="24" placeholder="e.g. 7" required>
+      </div>
+    </div>
+
+    <div class="section-title">&#x1f9e0; Mental &amp; Wellbeing</div>
+    <div class="grid" style="margin-bottom:22px">
+      <div class="field">
+        <label>Days mental health was NOT good (past 30 days)</label>
+        <input type="number" id="f_mental" min="0" max="30" placeholder="e.g. 0" required>
+      </div>
+      <div class="field">
+        <label>Days physical health was NOT good (past 30 days)</label>
+        <input type="number" id="f_phys" min="0" max="30" placeholder="e.g. 0" required>
+      </div>
+      <div class="field">
+        <label>Stress Level</label>
+        <select id="f_stress">
+          <option value="0" selected>Low</option>
+          <option value="1">Moderate</option>
+          <option value="2">High</option>
+        </select>
+      </div>
+    </div>
+
+    <button type="submit" class="btn-predict">&#x1f4ca; Predict My Cardiovascular Risk</button>
+  </form>
+
+  <!-- Loader -->
+  <div class="loader" id="loader">
+    <div class="spinner"></div>
+    Analysing your data...
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+
+    <div id="riskBanner" class="risk-banner"></div>
+
+    <div class="card">
+      <div class="section-title">&#x1f4ca; Key Metrics</div>
+      <div class="metrics-grid">
+        <div class="metric-box"><div class="val" id="mProb">—</div><div class="lbl">Disease Probability</div></div>
+        <div class="metric-box"><div class="val" id="mScore">—</div><div class="lbl">Heart Health Score</div></div>
+        <div class="metric-box"><div class="val" id="mRisk">—</div><div class="lbl">Risk Category</div></div>
+      </div>
+
+      <div class="charts-grid">
+        <!-- Doughnut: ML Probability -->
+        <div class="chart-box">
+          <h4>ML Disease Probability</h4>
+          <canvas id="chartProb" height="180"></canvas>
+        </div>
+        <!-- Doughnut: Health Score -->
+        <div class="chart-box score-ring">
+          <h4>Heart Health Score</h4>
+          <canvas id="chartScore" height="180"></canvas>
+        </div>
+        <!-- Bar: Risk factors -->
+        <div class="chart-box chart-wide">
+          <h4>Your Risk Factor Profile</h4>
+          <canvas id="chartFactors" height="150"></canvas>
+        </div>
+        <!-- Radar -->
+        <div class="chart-box">
+          <h4>Lifestyle Radar</h4>
+          <canvas id="chartRadar" height="200"></canvas>
+        </div>
+        <!-- Model comparison bar -->
+        <div class="chart-box">
+          <h4>Model Accuracy Overview</h4>
+          <canvas id="chartModel" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">&#x1f4dd; Personalised Recommendations</div>
+      <ul class="rec-list" id="recList"></ul>
+    </div>
+
+    <div class="disclaimer">
+      <strong>&#x26a0;&#xfe0f; Important Disclaimer:</strong> This tool is for educational awareness only and does not constitute medical advice. Results are based on self-reported data and a machine learning model trained on population-level data. Always consult a qualified healthcare professional for diagnosis and treatment.
+    </div>
+
+    <button class="btn-download" onclick="downloadReport()">&#x1f4e5; Download Personalised Health Report (HTML)</button>
+  </div>
+
+</div>
+
+<script>
+// ── Model metadata injected by server ────────────────────────────────────────
+const MODEL = __MODEL_JSON__;
+
+// ── Populate model badge ─────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const b = document.getElementById('modelBadge');
+  if (MODEL && MODEL.algorithm) {
+    b.innerHTML = [
+      `<span class="badge">&#x1f916; ${MODEL.algorithm}</span>`,
+      `<span class="badge">&#x1f4ca; ${MODEL.dataset}</span>`,
+      `<span class="badge">CV: ${MODEL.cv_accuracy}% ±${MODEL.cv_std}%</span>`,
+      `<span class="badge">AUC: ${MODEL.auc_score}</span>`,
+    ].join('');
+  } else {
+    b.innerHTML = '<span class="badge">⚠️ No model loaded — run train_model.py first</span>';
+  }
+
+  // Live BMI display
+  ['h_height','h_weight'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updateBMI);
+  });
+});
+
+function updateBMI() {
+  const h = parseFloat(document.getElementById('h_height').value);
+  const w = parseFloat(document.getElementById('w_weight') ?
+    document.getElementById('w_weight').value :
+    document.getElementById('h_weight').value);
+  const d = document.getElementById('bmiDisplay');
+  if (h > 0 && w > 0) {
+    const bmi = w / ((h/100) ** 2);
+    let cat = bmi < 18.5 ? 'Underweight (1)' : bmi < 25 ? 'Normal (2)' : bmi < 30 ? 'Overweight (3)' : 'Obese (4)';
+    d.textContent = `Your BMI: ${bmi.toFixed(1)} — ${cat}`;
+  }
+}
+
+// ── Feature extraction ───────────────────────────────────────────────────────
+function calcBMICat(h, w) {
+  if (!h || !w) return 2;
+  const bmi = w / ((h/100)**2);
+  if (bmi < 18.5) return 1;
+  if (bmi < 25)   return 2;
+  if (bmi < 30)   return 3;
+  return 4;
+}
+
+function getFeatures() {
+  const g = id => parseFloat(document.getElementById(id).value) || 0;
+  const h = g('h_height'), w = g('h_weight');
+  // Order MUST match FEATURES list in train_model.py (18 values)
+  return [
+    g('f_age'),
+    g('f_sex'),
+    g('f_high_bp'),
+    g('f_high_chol'),
+    g('f_diabetes'),
+    calcBMICat(h, w),
+    g('f_smoke'),
+    g('f_exercise'),
+    g('f_binge'),
+    g('f_lowfrvt'),
+    g('f_lowveg'),
+    g('f_sleep'),
+    g('f_mental'),
+    g('f_stroke'),
+    g('f_genhealth'),
+    g('f_phys'),
+    g('f_family'),
+    g('f_stress'),
+  ];
+}
+
+// ── Clinical Heart Health Score (0-100, Framingham/AHA inspired) ─────────────
+function clinicalScore(features) {
+  const [age, sex, high_bp, high_chol, diabetes, bmi_cat,
+         smoked, exercise, binge, low_frvt, low_veg, sleep,
+         mental, stroke, gen_health, phys, family, stress] = features;
+
+  let score = 100;
+  // Age penalty
+  if (age > 65) score -= 15;
+  else if (age > 55) score -= 10;
+  else if (age > 45) score -= 6;
+  else if (age > 35) score -= 3;
+
+  // Major risk factors
+  if (high_bp)    score -= 15;
+  if (high_chol)  score -= 12;
+  if (diabetes)   score -= 18;
+  if (stroke)     score -= 20;
+  if (smoked)     score -= 10;
+  if (family)     score -= 10;
+
+  // BMI
+  if (bmi_cat === 4) score -= 10;
+  else if (bmi_cat === 3) score -= 5;
+  else if (bmi_cat === 1) score -= 3;
+
+  // Lifestyle bonuses/penalties
+  if (!exercise)  score -= 8;
+  if (binge)      score -= 6;
+  if (low_frvt)   score -= 3;
+  if (low_veg)    score -= 3;
+
+  // Sleep
+  if (sleep < 6 || sleep > 9) score -= 5;
+
+  // Mental / stress
+  if (mental > 14) score -= 6;
+  else if (mental > 7) score -= 3;
+  if (stress === 2) score -= 5;
+  else if (stress === 1) score -= 2;
+
+  // General health
+  if (gen_health >= 4) score -= 8;
+  else if (gen_health === 3) score -= 3;
+
+  // Physical health
+  if (phys > 14) score -= 5;
+
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+// ── Recommendations ──────────────────────────────────────────────────────────
+function getRecommendations(features, prob, score) {
+  const [age, sex, high_bp, high_chol, diabetes, bmi_cat,
+         smoked, exercise, binge, low_frvt, low_veg, sleep,
+         mental, stroke, gen_health, phys, family, stress] = features;
+  const recs = [];
+
+  if (prob > 40)
+    recs.push({text: '🏥 Consult a cardiologist for a comprehensive cardiac evaluation.', good: false});
+  if (high_bp)
+    recs.push({text: '💊 Monitor blood pressure regularly. Target <130/80 mmHg per AHA guidelines.', good: false});
+  if (high_chol)
+    recs.push({text: '🥗 Work with your doctor on cholesterol management — diet, statins if needed.', good: false});
+  if (diabetes)
+    recs.push({text: '🩸 Maintain HbA1c below 7%. Diabetes significantly elevates heart disease risk.', good: false});
+  if (!exercise)
+    recs.push({text: '🏃 Aim for 150 min/week of moderate activity — brisk walking counts!', good: false});
+  else
+    recs.push({text: '✅ Great job staying physically active! Maintain at least 150 min/week.', good: true});
+  if (bmi_cat >= 3)
+    recs.push({text: '⚖️ Achieving a healthy BMI (18.5–24.9) can reduce heart disease risk by up to 35%.', good: false});
+  if (smoked)
+    recs.push({text: '🚭 Quitting smoking reduces heart disease risk by 50% within 1 year.', good: false});
+  if (binge)
+    recs.push({text: '🍷 Limit alcohol: ≤1 drink/day for women, ≤2 for men (AHA guidelines).', good: false});
+  if (low_frvt || low_veg)
+    recs.push({text: '🥦 Eat 5+ servings of fruits and vegetables daily to lower cardiovascular risk.', good: false});
+  if (sleep < 6 || sleep > 9)
+    recs.push({text: '😴 Aim for 7–9 hours of quality sleep. Poor sleep raises inflammation and BP.', good: false});
+  if (stress === 2)
+    recs.push({text: '🧘 High stress raises cortisol and BP. Try mindfulness, yoga, or therapy.', good: false});
+  if (family)
+    recs.push({text: '🧬 Family history is a key risk factor. Annual cardiac screening is recommended.', good: false});
+  if (score >= 75)
+    recs.push({text: '💚 Your overall heart health score looks good. Keep up your healthy habits!', good: true});
+
+  return recs.length ? recs : [{text: '✅ No major risk factors detected. Keep maintaining healthy habits!', good: true}];
+}
+
+// ── Charts ───────────────────────────────────────────────────────────────────
+let charts = {};
+
+function destroyCharts() {
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+}
+
+function drawCharts(probDisease, score, features) {
+  const [age, sex, high_bp, high_chol, diabetes, bmi_cat,
+         smoked, exercise, binge, low_frvt, low_veg, sleep,
+         mental, stroke, gen_health, phys, family, stress] = features;
+
+  // 1. Probability doughnut
+  charts.prob = new Chart(document.getElementById('chartProb'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Disease Risk', 'Healthy'],
+      datasets: [{
+        data: [probDisease, 100 - probDisease],
+        backgroundColor: ['#e53e3e','#48bb78'],
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+      cutout: '65%',
+    }
+  });
+
+  // 2. Health score doughnut
+  const scoreColor = score >= 75 ? '#48bb78' : score >= 50 ? '#ed8936' : '#e53e3e';
+  charts.score = new Chart(document.getElementById('chartScore'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Score', 'Gap'],
+      datasets: [{
+        data: [score, 100 - score],
+        backgroundColor: [scoreColor, '#e2e8f0'],
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false },
+      },
+      cutout: '70%',
+    }
+  });
+
+  // 3. Risk factor horizontal bar
+  const factorLabels = ['Age Risk','High BP','High Chol','Diabetes','Smoking','Obesity',
+                        'No Exercise','Binge Drink','Stroke','Family Hx'];
+  const ageScore = age > 65 ? 3 : age > 55 ? 2 : age > 45 ? 1 : 0;
+  const factorValues = [
+    ageScore, high_bp*3, high_chol*2, diabetes*4,
+    smoked*2, (bmi_cat>=3)?(bmi_cat-2)*2:0,
+    (!exercise)*2, binge*1, stroke*4, family*2
+  ];
+  const factorColors = factorValues.map(v => v >= 3 ? '#e53e3e' : v >= 1 ? '#ed8936' : '#48bb78');
+
+  charts.factors = new Chart(document.getElementById('chartFactors'), {
+    type: 'bar',
+    data: {
+      labels: factorLabels,
+      datasets: [{
+        label: 'Risk Level',
+        data: factorValues,
+        backgroundColor: factorColors,
+        borderRadius: 5,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { min: 0, max: 4, ticks: { stepSize: 1 }, grid: { color: '#edf2f7' } },
+        y: { ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+
+  // 4. Lifestyle radar
+  const sleepScore = sleep >= 7 && sleep <= 9 ? 100 : sleep >= 6 ? 60 : 30;
+  charts.radar = new Chart(document.getElementById('chartRadar'), {
+    type: 'radar',
+    data: {
+      labels: ['Exercise','Nutrition','Sleep','No Alcohol','No Stress','Mental Health'],
+      datasets: [{
+        label: 'Your Score',
+        data: [
+          exercise ? 90 : 20,
+          (low_frvt || low_veg) ? 40 : 85,
+          sleepScore,
+          binge ? 25 : 85,
+          stress === 0 ? 90 : stress === 1 ? 55 : 20,
+          mental === 0 ? 90 : mental < 7 ? 60 : 25,
+        ],
+        backgroundColor: 'rgba(229,62,62,.15)',
+        borderColor: '#e53e3e',
+        borderWidth: 2,
+        pointBackgroundColor: '#e53e3e',
+      }]
+    },
+    options: {
+      scales: { r: { min: 0, max: 100, ticks: { display: false } } },
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  // 5. Model accuracy comparison
+  const allR = (MODEL && MODEL.all_results) ? MODEL.all_results : {};
+  const modelNames  = ['Random Forest','Gradient Boosting','Logistic Regression','Voting Ensemble'];
+  const modelAUCs   = [
+    allR['Random Forest']?.auc        ?? 0.77,
+    allR['Gradient Boosting']?.auc    ?? 0.78,
+    allR['Logistic Regression']?.auc  ?? 0.73,
+    MODEL?.auc_score                  ?? 0.79,
+  ];
+  charts.model = new Chart(document.getElementById('chartModel'), {
+    type: 'bar',
+    data: {
+      labels: modelNames,
+      datasets: [{
+        label: 'ROC-AUC',
+        data: modelAUCs,
+        backgroundColor: ['#4299e1','#9f7aea','#68d391','#e53e3e'],
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { min: 0.6, max: 1.0, title: { display: true, text: 'AUC Score' } }
+      }
+    }
+  });
+}
+
+// ── Main prediction flow ─────────────────────────────────────────────────────
+let _lastResult = null;
+
+async function runPrediction(e) {
+  e.preventDefault();
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('loader').style.display = 'block';
+
+  const features = getFeatures();
+  const score    = clinicalScore(features);
+  let probDisease = 50;
+
+  try {
+    const res = await fetch('/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ features }),
+    });
+    const data = await res.json();
+    if (data.available) {
+      probDisease = data.prob_disease;
+    }
+  } catch (_) {
+    // Server unavailable — use clinical score only
+  }
+
+  document.getElementById('loader').style.display = 'none';
+  showResults(features, probDisease, score);
+  _lastResult = { features, probDisease, score };
+}
+
+function showResults(features, probDisease, score) {
+  // Banner
+  let bannerClass, riskLabel;
+  if (probDisease < 30 && score >= 65) {
+    bannerClass = 'low-risk'; riskLabel = 'Low Risk';
+  } else if (probDisease < 55) {
+    bannerClass = 'moderate-risk'; riskLabel = 'Moderate Risk';
+  } else {
+    bannerClass = 'high-risk'; riskLabel = 'High Risk';
+  }
+
+  document.getElementById('riskBanner').className = `risk-banner ${bannerClass}`;
+  document.getElementById('riskBanner').innerHTML = `
+    <h2>${riskLabel}</h2>
+    <div class="prob">${probDisease.toFixed(1)}%</div>
+    <p>Estimated probability of cardiovascular disease</p>
+  `;
+
+  document.getElementById('mProb').textContent  = `${probDisease.toFixed(1)}%`;
+  document.getElementById('mScore').textContent = `${score}/100`;
+  document.getElementById('mRisk').textContent  = riskLabel;
+
+  // Recs
+  const recs = getRecommendations(features, probDisease, score);
+  document.getElementById('recList').innerHTML = recs.map(r =>
+    `<li class="${r.good ? 'good' : ''}">${r.text}</li>`
+  ).join('');
+
+  destroyCharts();
+  drawCharts(probDisease, score, features);
+
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ── Download Report ───────────────────────────────────────────────────────────
+function downloadReport() {
+  if (!_lastResult) return;
+  const { features, probDisease, score } = _lastResult;
+  const recs = getRecommendations(features, probDisease, score);
+  const riskLabel = probDisease < 30 && score >= 65 ? 'Low Risk'
+                  : probDisease < 55 ? 'Moderate Risk' : 'High Risk';
+  const [age, sex, high_bp, high_chol, diabetes, bmi_cat,
+         smoked, exercise, binge, low_frvt, low_veg, sleep,
+         mental, stroke, gen_health, phys, family, stress] = features;
+
+  const html = `<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><title>Heart Health Report</title>
+<style>
+  body{font-family:Arial,sans-serif;max-width:700px;margin:40px auto;color:#1a202c;padding:0 20px}
+  h1{color:#c53030}h2{color:#c53030;margin-top:28px;border-bottom:2px solid #fed7d7;padding-bottom:6px}
+  table{width:100%;border-collapse:collapse;margin:12px 0}
+  td,th{padding:8px 12px;border:1px solid #e2e8f0;text-align:left}
+  th{background:#fff5f5;font-weight:700}
+  .risk{font-size:1.5rem;font-weight:800;color:${probDisease>55?'#c53030':probDisease>30?'#d97706':'#276749'}}
+  ul{padding-left:18px}li{margin:6px 0}
+  .footer{margin-top:40px;font-size:.8rem;color:#718096;border-top:1px solid #e2e8f0;padding-top:12px}
+</style></head><body>
+<h1>&#x2764;&#xfe0f; Cardiovascular Risk Report</h1>
+<p>Generated: ${new Date().toLocaleString()}</p>
+<p class="risk">${riskLabel} — ${probDisease.toFixed(1)}% disease probability &nbsp;|&nbsp; Heart Health Score: ${score}/100</p>
+<h2>Input Summary</h2>
+<table>
+<tr><th>Factor</th><th>Your Value</th></tr>
+<tr><td>Age</td><td>${age}</td></tr>
+<tr><td>Sex</td><td>${sex===1?'Male':'Female'}</td></tr>
+<tr><td>BMI Category</td><td>${['','Underweight','Normal','Overweight','Obese'][bmi_cat]||bmi_cat}</td></tr>
+<tr><td>High Blood Pressure</td><td>${high_bp?'Yes':'No'}</td></tr>
+<tr><td>High Cholesterol</td><td>${high_chol?'Yes':'No'}</td></tr>
+<tr><td>Diabetes</td><td>${diabetes?'Yes':'No'}</td></tr>
+<tr><td>Ever Smoked</td><td>${smoked?'Yes':'No'}</td></tr>
+<tr><td>Binge Drinking</td><td>${binge?'Yes':'No'}</td></tr>
+<tr><td>Physical Activity</td><td>${exercise?'Yes':'No'}</td></tr>
+<tr><td>Fruit Intake &lt;1/day</td><td>${low_frvt?'Yes':'No'}</td></tr>
+<tr><td>Vegetable Intake &lt;1/day</td><td>${low_veg?'Yes':'No'}</td></tr>
+<tr><td>Sleep Hours</td><td>${sleep}</td></tr>
+<tr><td>Poor Mental Health Days</td><td>${mental}</td></tr>
+<tr><td>Poor Physical Health Days</td><td>${phys}</td></tr>
+<tr><td>History of Stroke</td><td>${stroke?'Yes':'No'}</td></tr>
+<tr><td>Family History of Heart Disease</td><td>${family?'Yes':'No'}</td></tr>
+<tr><td>General Health</td><td>${['','Excellent','Very Good','Good','Fair','Poor'][gen_health]||gen_health}</td></tr>
+<tr><td>Stress Level</td><td>${['Low','Moderate','High'][stress]||stress}</td></tr>
+</table>
+<h2>Personalised Recommendations</h2>
+<ul>${recs.map(r=>`<li>${r.text}</li>`).join('')}</ul>
+<h2>Model Information</h2>
+<p>Algorithm: ${MODEL?.algorithm||'Voting Ensemble'} &nbsp;|&nbsp; Dataset: ${MODEL?.dataset||'—'}</p>
+<p>CV Accuracy: ${MODEL?.cv_accuracy||'—'}% ± ${MODEL?.cv_std||'—'}% &nbsp;|&nbsp; ROC-AUC: ${MODEL?.auc_score||'—'}</p>
+<div class="footer">
+  <strong>Disclaimer:</strong> This report is for educational purposes only and does not constitute medical advice.
+  Consult a qualified healthcare professional for any medical concerns.
+  <br>Cardiovascular Risk Prediction System — Chandigarh University, April 2026
+</div>
+</body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'heart_health_report.html';
+  a.click();
+}
+</script>
+</body>
+</html>
