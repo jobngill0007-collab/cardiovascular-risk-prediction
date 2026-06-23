@@ -6,15 +6,14 @@ A browser-based AI-powered cardiovascular disease risk assessment tool built as 
 
 ## 👥 Team
 
-| Name | Roll No |
-|---|---|
-| Sukhvinder Singh | 25BAI70441 |
-| Dheirya Goyal | 25BAI70459 |
-| Jobanjeet Singh | 25BAI70622 |
-| Arunpal Singh Dhaliwal | 25BAI70672 |
+- Sukhvinder Singh
+- Dheirya Goyal
+- Jobanjeet Singh
+- Arunpal Singh Dhaliwal
 
 **Supervisor:** Dr. Navneet Kaur  
-**Degree:** B.E. — Computer Science Engineering (AI & ML)
+**Degree:** B.E. — Computer Science Engineering (AI & ML)  
+**Semester:** 2nd Semester
 
 ---
 
