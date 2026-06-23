@@ -74,7 +74,8 @@ Browser opens automatically at **http://localhost:5050**
 
 ## 🖥️ Screenshots
 
-> *(Add screenshots of the UI here)*
+> ![Uploading Screenshot (22).png…]()
+
 
 ---
 
