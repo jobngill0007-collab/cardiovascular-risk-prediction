@@ -328,7 +328,7 @@ def train(data, using_brfss):
 
     out = os.path.join(BASE, "heart_model.pkl")
     joblib.dump(save_data, out)
-    print(f"Model saved → {out}")
+    print(f"Model saved -> {out}")
     return save_data
 
 

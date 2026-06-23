@@ -4,19 +4,6 @@ A browser-based AI-powered cardiovascular disease risk assessment tool built as 
 
 ---
 
-## 👥 Team
-
-- Sukhvinder Singh
-- Dheirya Goyal
-- Jobanjeet Singh
-- Arunpal Singh Dhaliwal
-
-**Supervisor:** Dr. Navneet Kaur  
-**Degree:** B.E. — Computer Science Engineering (AI & ML)  
-**Semester:** 2nd Semester
-
----
-
 ## 🧠 What It Does
 
 Users answer an **18-question self-assessment form** covering lifestyle, medical history, and demographics. The system then provides:
